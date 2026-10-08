@@ -1,0 +1,9 @@
+Turn the mods in my local marketplace (~/my-mods) into a public GitHub repo that anyone can install from, as a free resource.
+
+1. Make a clean copy in a new folder (don't publish ~/my-mods itself). Leave out generated files (.claude-plugin/types/ in each mod) and anything not mine to share.
+2. Scan every file for personal data before anything goes public: my email, IDs, client names, file paths with my username, tokens or keys. Replace them with blanks or example values, and show me what you changed.
+3. Licenses: a root LICENSE for my own work, the original LICENSE kept in each mod I adapted from someone else, a CHANGES.md in each adapted mod, and a NOTICE.md crediting every original author.
+4. A .claude-plugin/marketplace.json at the root listing every mod, so people can run: /plugin marketplace add <my-github-user>/<repo-name>
+5. A README that sells it: what each mod does with a picture or mock-up of what you see, install steps (in a chat, from a shell, from a clone), a "what each mod reaches" table, troubleshooting and credits. Plus SECURITY.md and a short demo tour with made-up sample data.
+6. Run claude plugin validate on the repo root and on every mod, and claude plugin test on every mod. Everything must pass.
+7. Show me the final file list. After I say yes, create the GitHub repo as public with gh, push it, and test that "claude plugin marketplace add <user>/<repo>" works from GitHub.

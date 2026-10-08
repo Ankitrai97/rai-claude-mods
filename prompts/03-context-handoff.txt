@@ -1,0 +1,27 @@
+I want a Claude Code mod called Context Handoff. It shows how full the current chat's context is and gives me a one-click handoff to a fresh chat, so I never lose what I was doing. Start from Anthropic's token-weather sample mod: https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods/token-weather
+
+Step 1: Prepare
+- Load your plugin-authoring skill and read the mods docs at https://code.claude.com/docs/en/plugins/mods.
+- Check my Claude Code version is 2.1.287 or newer (2.1.286+ in the desktop app).
+
+Step 2: Review before installing
+- Get token-weather's files and read every code file. Run claude plugin validate on it and tell me in plain English what it hooks and calls, and whether it uses my usage.
+- Stop and wait for my OK.
+
+Step 3: Build it (after I approve)
+- Copy it into my local marketplace at ~/my-mods/plugins/context-handoff, keeping its Apache-2.0 LICENSE and the original copyright header.
+- Change it so that:
+  1. A bar above the prompt shows context used, coloured green under 60%, amber 60 to 80%, red above 80%, and it always shows (even at 0%)
+  2. The bar has an "H Handoff" button, and /handoff does the same
+  3. Handoff asks Claude to write .claude/handoff.md in the current project: plain English, under 300 words, headings Goal, What's done, Decisions made, Key files, Next steps. The bar then says the note was saved
+  4. When a new chat starts in a project that has a note less than 24 hours old, the note loads into that chat, a toast says so, and the file is renamed to handoff-used.md so it never loads twice
+  5. Use the chat's current folder when the button is pressed, not the folder the chat started in
+- Write tests (colours, the button, the command, loading, renaming, the 24-hour cutoff) and run claude plugin validate and claude plugin test until both pass. Install it and tell me to run /reload-plugins.
+
+Step 4: Test it live
+Press H in this chat, then open a new chat in the same folder and ask "what were we working on?". It passes if the new chat answers from the note without me explaining, and handoff-used.md exists afterwards.
+
+Step 5: Wrap up
+Write CHANGES.md listing every change from token-weather and why, and a README.
+
+Lessons from our build: mods can read and write files but not rename them, so run Move-Item (Windows) or mv for the rename; and a prompt sent from inside a command hook is refused, so send the handoff request just after the command returns.

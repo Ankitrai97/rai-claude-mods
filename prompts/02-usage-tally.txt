@@ -1,0 +1,25 @@
+I want a Claude Code mod called Usage Tally that shows my Claude plan usage inside Claude Code, like the Tally browser extension shows it on claude.ai. Build it from scratch.
+
+Step 1: Prepare
+- Load your plugin-authoring skill and read the mods docs at https://code.claude.com/docs/en/plugins/mods.
+- Check my Claude Code version is 2.1.287 or newer (2.1.286+ in the desktop app, via /status).
+- Find in the mod API where the 5-hour session and weekly limit figures come from (hint: $.session.usage() and the session.measure event, which carry rateLimits with percentUsed and resetsAt). Tell me whether reading them costs anything.
+
+Step 2: Build it
+- Put it in my local marketplace at ~/my-mods/plugins/usage-tally and add it to ~/my-mods/.claude-plugin/marketplace.json.
+- It should:
+  1. Show a status line like "Session 42% · resets 2h 10m · Week 19%", updated after every reply, with the countdown ticking every minute
+  2. /tally opens a side pane with a coloured bar per limit (green under 75%, amber 75 to 90%, red from 90%), its reset countdown, and this chat's cost and context fill
+  3. Pop up a warning when a limit passes 75% and again at 90%, once per limit window, remembered across chats so a new chat doesn't repeat it
+  4. Make no model calls and no network requests
+- Write tests for the status line text, the countdowns, the warnings firing once, and the pane, then run claude plugin validate and claude plugin test until both pass.
+- Install it and tell me to run /reload-plugins.
+
+Step 3: Test it live
+Run /tally after one reply. It passes if:
+1. The status line shows my session and weekly percentages with a reset time
+2. The pane's numbers match the status line
+3. The pane says clearly when there is no reading yet (before the first reply, or on an API key with no plan limits)
+
+Step 4: Wrap up
+Write a README with a "what it reaches" table (network, processes, files, model calls, data sent), and give me a 3-line summary.

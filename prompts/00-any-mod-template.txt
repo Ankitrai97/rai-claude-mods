@@ -1,0 +1,36 @@
+I want to build a Claude Code mod called <MOD NAME>.
+
+What it should do, in plain English:
+<one or two sentences: what I see, when, and what I can click or type>
+
+Start from: <a GitHub repo or sample mod to adapt, or "from scratch">
+
+Step 1: Prepare
+- Load your plugin-authoring skill and read the mods docs at https://code.claude.com/docs/en/plugins/mods before you touch anything.
+- Check my Claude Code version is 2.1.287 or newer (2.1.286+ in the desktop app, via /status).
+
+Step 2: Review before installing (skip if building from scratch)
+- Get the starting mod's files and read every code file.
+- Run claude plugin validate on it. Tell me in plain English what it does, what it hooks and what it calls, including whether it calls a model and uses my usage.
+- Stop here and wait for my OK.
+
+Step 3: Build it
+- Put it in a local marketplace at ~/my-mods/plugins/<mod-name>, keeping the original license file if you started from someone else's mod. Create ~/my-mods/.claude-plugin/marketplace.json if it doesn't exist, and add the marketplace.
+- Make it do exactly this:
+  1. <behaviour 1>
+  2. <behaviour 2>
+  3. <behaviour 3>
+- Write tests for each behaviour and run claude plugin validate and claude plugin test until both pass.
+- Install it and tell me to run /reload-plugins, then confirm it shows as active in /plugin.
+
+Step 4: Test it live
+Create a small test folder with made-up sample data (no real names). Then give me one task to try with the mod on.
+It passes only if all of these are true:
+1. <what I should see>
+2. <what I should be able to do>
+3. <what happens when I turn it off>
+Keep fixing until all of them pass.
+
+Step 5: Wrap up
+- Write CHANGES.md in the mod folder listing what you changed from the original and why.
+- Give me a 3-line summary: how to turn it on and off, what it shows, and how to see the full detail when I need it.

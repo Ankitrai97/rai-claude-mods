@@ -7,6 +7,7 @@
 
 <p align="center">
   <a href="#install">Install</a> ·
+  <a href="BUILD-ROADMAP.md"><b>Build Roadmap</b></a> ·
   <a href="demos/README.md">Five-minute tour</a> ·
   <a href="#the-mods">The mods</a> ·
   <a href="#what-each-mod-reaches">What each mod reaches</a> ·
@@ -77,6 +78,8 @@ claude plugin install simple-mode@rai-claude-mods
 Edit a file in the folder, then `/reload-plugins` in your chat: no reinstall needed. To try one for a single session without installing: `claude --plugin-dir ./rai-claude-mods/plugins/simple-mode`.
 
 Then take the [five-minute tour](demos/README.md): it has sample notes and a messy spreadsheet to try every mod on.
+
+> **Want to build mods like these yourself?** The [Build Roadmap](BUILD-ROADMAP.md) has the step-by-step method and the exact prompts we gave Claude for each mod, in [`prompts/`](prompts). No coding needed.
 
 ## The mods
 

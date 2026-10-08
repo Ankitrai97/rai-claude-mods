@@ -1,0 +1,26 @@
+I want a Claude Code mod that brings Gmail, Slack and Google Calendar into Claude Code, but only pops up alerts for messages that matter. Start from the inbox-alerts mod in https://github.com/OneWave-AI/claude-code-mods
+
+Step 1: Prepare
+- Load your plugin-authoring skill and read the mods docs at https://code.claude.com/docs/en/plugins/mods.
+- Check my Claude Code version (2.1.287+, or 2.1.286+ in the desktop app) and that my claude.ai Gmail, Slack and Google Calendar connectors are connected.
+
+Step 2: Review before installing
+- Get inbox-alerts' files and read every code file. Run claude plugin validate on it and tell me in plain English what it hooks and calls, how often it checks each source, and whether it uses my usage.
+- Stop and wait for my OK.
+
+Step 3: Build it (after I approve)
+- Copy it into my local marketplace at ~/my-mods/plugins/inbox-alerts-priority, keeping its MIT LICENSE.
+- Change it so that:
+  1. Two plain text files in the mod folder decide what pops up: priority-words.txt (start with quote, invoice, booking, proposal, urgent) and clients.txt (client emails, domains or Slack names). Edits apply on the next check, no reinstall
+  2. Only priority messages pop up; everything else lands quietly in the pane
+  3. Check Gmail every 30 minutes, Slack every 5 minutes, Calendar every hour
+  4. One pane with three stacked sections (Email, Slack, Calendar), priority messages at the top with a PRIORITY badge, up to 5 items each, Calendar looking 7 days ahead
+  5. /alerts triage asks you to rank my unread messages and draft replies, and never sends anything
+  6. My email and Slack member ID are settings (userConfig), not hard-coded
+- Write tests for the matching rules and the pane, run claude plugin validate and claude plugin test until both pass, install it and tell me to run /reload-plugins.
+
+Step 4: Test it live
+Put one of my real client domains in clients.txt, run /alerts check, and show me what counts as priority and why.
+
+Step 5: Wrap up
+Write CHANGES.md listing what changed from the original and why, and a README.

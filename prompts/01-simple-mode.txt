@@ -1,0 +1,36 @@
+I want to set up a Claude Code mod called Simple Mode. When it's on, I see a short checklist of what you're doing and what's done, plus a two-line summary at the end, and the long step-by-step detail is hidden. Start from the existing agent-narrator mod in this repo: https://github.com/OneWave-AI/claude-code-mods
+
+Step 1: Prepare
+- Load your plugin-authoring skill and read the mods docs at https://code.claude.com/docs/en/plugins/mods before you touch anything.
+- Check my Claude Code version is 2.1.287 or newer (or 2.1.286+ in the desktop app via /status).
+
+Step 2: Review before installing
+- Add the marketplace OneWave-AI/claude-code-mods if it isn't added already. Get the agent-narrator files and read every code file.
+- Run claude plugin validate on it. Then tell me in plain English what it does, what it hooks and what it calls, including whether it calls a model and uses my usage.
+- Stop here and wait for my OK.
+
+Step 3: Install and customize (after I approve)
+- Copy agent-narrator into a local marketplace at ~/my-mods as simple-mode, keeping its MIT license file. Create ~/my-mods/.claude-plugin/marketplace.json if it doesn't exist, and add the marketplace.
+- Change it so that:
+  1. /simple turns it on and off, and it stays in that state across chats until I change it
+  2. When on, a side pane shows a checklist of the current task: each step in plain English, marked working or done
+  3. Tool call rows in the chat collapse to one line each, and I can still expand them
+  4. Every reply ends with a two-line plain-English summary of what you did
+  5. Remove the time-saved estimate from the original
+- Install it, run /reload-plugins, and confirm it shows as active in /plugin.
+
+Step 4: Test
+Create a test folder with three short sample notes about a made-up project (no real names). Turn Simple Mode on, then do this task: "Read the notes in this folder and write a short weekly update."
+It passes only if all of these are true:
+1. The checklist shows each step and ticks it off as it finishes
+2. Tool call rows are collapsed to one line, and expanding one works
+3. The reply ends with a two-line summary
+4. /simple turns it off and the normal view comes back
+5. Starting a new chat keeps whatever state I left it in
+Keep fixing until all five pass.
+
+Step 5: Wrap up
+- Write CHANGES.md in the mod folder listing what you changed from the original and why.
+- Give me a 3-line summary: how to turn it on and off, what it shows, and how to see the full detail when I need it.
+
+Lesson from our build: save the on/off setting in one file (for example ~/.claude/simple-mode.json), not only in the plugin store. Claude Code keeps a separate store for each way a plugin is loaded, so a new chat loaded another way can forget the setting.

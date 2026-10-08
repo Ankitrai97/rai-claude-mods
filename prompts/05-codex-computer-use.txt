@@ -1,0 +1,27 @@
+I want Claude Code's desktop computer use to go through the computer-use engine inside the Codex app, so Claude reads apps through the accessibility layer (exact values, not screenshots) and asks me before using each app. There is a macOS version of this mod; I'm on <Windows / macOS>.
+
+Start from: the codex-computer-use mod in https://github.com/Ankitrai97/rai-claude-mods (or Prompt Advisers' original Computer Use mod for macOS).
+
+Step 1: Prepare
+- Load your plugin-authoring skill and read the mods docs at https://code.claude.com/docs/en/plugins/mods.
+- Check my Claude Code version (2.1.287+, or 2.1.286+ in the desktop app).
+- Check that the Codex app (Windows) or ChatGPT app (macOS) is installed with computer use set up. On Windows, find the computer-use server Codex registers in ~/.codex/config.toml and tell me what you found.
+
+Step 2: Review before installing
+- Read every file of the mod, including its bridge (bridge/daemon.mjs, launch.mjs, start.mjs). Run claude plugin validate on it and tell me in plain English what it hooks, what it runs, what it reaches on the network, and how app approval works.
+- Stop and wait for my OK.
+
+Step 3: Install and adapt (after I approve)
+- Put it in my local marketplace at ~/my-mods/plugins/codex-computer-use, keeping its MIT LICENSE.
+- Make sure that:
+  1. Claude's own computer-use tools are blocked while this is on, so every action goes through Codex
+  2. The first time Claude wants an app, a pane asks me: allow for this chat, always allow, or deny. Nothing is approved to start with, and auto-approve is off
+  3. /codex-cu on|off|status, allow|always|deny|forget <app> and auto on|off work
+  4. The bridge only listens on 127.0.0.1 and needs a random token
+  5. Codex's runtime path is read fresh from its config every time, so a Codex update doesn't break it
+- Run claude plugin validate and claude plugin test until both pass, install it and tell me to run /reload-plugins.
+
+Step 4: Test it live
+Create a messy spreadsheet on my Desktop: 20 made-up leads with duplicates, mixed name capitals, three phone formats, mixed dates and some missing phones (fake names and 555 numbers only). Then clean it in Excel through Codex: remove duplicates, fix names and phones, sort by date, highlight rows with no phone. It passes if the file ends up clean and I approved Excel exactly once.
+
+Lessons from our build: on Windows, Codex takes over the mouse and keyboard while it acts (it is not background automation), so tell me to leave the machine alone during a run. Excel's pop-up dialogs often don't appear in the accessibility tree: take a screenshot to see where the focus is before pressing Enter.
