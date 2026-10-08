@@ -1,0 +1,35 @@
+{
+  "name": "rai-claude-mods",
+  "description": "Five free Claude Code mods by Rapple AI: plain-English Simple Mode, plan usage tracking, one-click context handoff, priority inbox alerts and Codex-powered computer use.",
+  "owner": {
+    "name": "Rapple AI",
+    "url": "https://rappleai.com"
+  },
+  "plugins": [
+    {
+      "name": "simple-mode",
+      "source": "./plugins/simple-mode",
+      "description": "A plain-English checklist of what Claude is doing, one-line tool rows you can expand, and a two-line summary at the end of every reply. /simple toggles it."
+    },
+    {
+      "name": "usage-tally",
+      "source": "./plugins/usage-tally",
+      "description": "Your plan usage in Claude Code: session and weekly limits with reset countdowns in the status line, a /tally pane, and warnings at 75% and 90%."
+    },
+    {
+      "name": "context-handoff",
+      "source": "./plugins/context-handoff",
+      "description": "A green/amber/red context bar above the prompt with a one-click handoff note that the next chat loads automatically."
+    },
+    {
+      "name": "inbox-alerts-priority",
+      "source": "./plugins/inbox-alerts-priority",
+      "description": "Gmail, Slack and Calendar inside Claude Code, with pop-up alerts only for priority messages."
+    },
+    {
+      "name": "codex-computer-use",
+      "source": "./plugins/codex-computer-use",
+      "description": "Claude thinks, Codex clicks: Claude's desktop computer use routed through the Codex app's engine, with per-app approval. Windows and macOS."
+    }
+  ]
+}

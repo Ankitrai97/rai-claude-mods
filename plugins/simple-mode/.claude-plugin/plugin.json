@@ -1,0 +1,14 @@
+{
+  "name": "simple-mode",
+  "version": "0.1.1",
+  "description": "Simple Mode: a plain-English checklist of what Claude is doing, one-line tool rows you can expand, and a two-line summary at the end of every reply. /simple turns it on and off.",
+  "types": "./types/index.d.ts",
+  "license": "MIT",
+  "author": {
+    "name": "Rapple AI, from OneWave AI's agent-narrator",
+    "url": "https://rappleai.com"
+  },
+  "displayName": "Simple Mode",
+  "homepage": "https://github.com/Ankitrai97/rai-claude-mods/tree/main/plugins/simple-mode",
+  "repository": "https://github.com/Ankitrai97/rai-claude-mods"
+}

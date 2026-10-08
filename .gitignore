@@ -1,0 +1,8 @@
+# Claude Code writes each mod's TypeScript types here every time it loads the mod.
+.claude-plugin/types/
+plugins/*/.claude-plugin/types/
+node_modules/
+.DS_Store
+Thumbs.db
+# Handoff notes context-handoff writes in a project.
+.claude/handoff*.md

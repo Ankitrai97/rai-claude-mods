@@ -1,0 +1,14 @@
+{
+  "name": "context-handoff",
+  "version": "0.1.1",
+  "description": "A bar above the prompt showing how full the chat's context is (green under 60%, amber 60-80%, red above 80%), with an H button and /handoff to save a handoff note that the next chat in the project loads automatically.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Rapple AI, from Anthropic's token-weather sample",
+    "url": "https://rappleai.com"
+  },
+  "license": "Apache-2.0",
+  "displayName": "Context Handoff",
+  "homepage": "https://github.com/Ankitrai97/rai-claude-mods/tree/main/plugins/context-handoff",
+  "repository": "https://github.com/Ankitrai97/rai-claude-mods"
+}

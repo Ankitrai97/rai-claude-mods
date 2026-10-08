@@ -1,0 +1,28 @@
+{
+  "name": "inbox-alerts-priority",
+  "version": "0.1.0",
+  "description": "Gmail, Slack and Calendar inside Claude Code, with pop-up alerts only for priority messages",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "email": {
+      "type": "string",
+      "title": "Your email",
+      "description": "Your Gmail address, so your own sent mail is never an alert. Separate several with commas.",
+      "default": ""
+    },
+    "slackUserId": {
+      "type": "string",
+      "title": "Your Slack member ID",
+      "description": "Your Slack member ID (U...), used to find mentions and DMs",
+      "default": ""
+    }
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Rapple AI, from OneWave AI's inbox-alerts",
+    "url": "https://rappleai.com"
+  },
+  "displayName": "Inbox Alerts (Priority)",
+  "homepage": "https://github.com/Ankitrai97/rai-claude-mods/tree/main/plugins/inbox-alerts-priority",
+  "repository": "https://github.com/Ankitrai97/rai-claude-mods"
+}

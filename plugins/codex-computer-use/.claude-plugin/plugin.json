@@ -1,0 +1,14 @@
+{
+  "name": "codex-computer-use",
+  "version": "0.6.1",
+  "description": "Claude thinks, Codex clicks: routes Claude's desktop computer use through Codex's computer-use engine (exact values via UI Automation; background on macOS, foreground on Windows). Per-app approval, one Codex session per Claude chat. Toggle with /codex-cu on|off.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Rapple AI (Windows port), from Prompt Advisers' Computer Use mod",
+    "url": "https://rappleai.com"
+  },
+  "license": "MIT",
+  "displayName": "Codex Computer Use",
+  "homepage": "https://github.com/Ankitrai97/rai-claude-mods/tree/main/plugins/codex-computer-use",
+  "repository": "https://github.com/Ankitrai97/rai-claude-mods"
+}

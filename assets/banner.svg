@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400" role="img" aria-label="RAI Claude Mods: five free mods for Claude Code">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1121"/>
+      <stop offset="1" stop-color="#1a1440"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#D97757"/>
+      <stop offset="1" stop-color="#F2B880"/>
+    </linearGradient>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#ffffff" opacity="0.06"/>
+    </pattern>
+  </defs>
+  <rect width="1280" height="400" rx="24" fill="url(#bg)"/>
+  <rect width="1280" height="400" rx="24" fill="url(#dots)"/>
+
+  <g font-family="ui-sans-serif, -apple-system, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+    <text x="72" y="118" font-size="22" font-weight="600" fill="#F2B880" letter-spacing="4">RAPPLE AI · FREE &amp; OPEN SOURCE</text>
+    <text x="72" y="192" font-size="72" font-weight="800" fill="#ffffff">RAI Claude Mods</text>
+    <rect x="74" y="214" width="180" height="6" rx="3" fill="url(#accent)"/>
+    <text x="72" y="268" font-size="28" fill="#C9D1E3">Five mods that make Claude Code calmer, clearer and yours.</text>
+
+    <g font-size="19" font-weight="600">
+      <g transform="translate(72,306)">
+        <rect width="168" height="44" rx="22" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.18"/>
+        <text x="84" y="29" text-anchor="middle" fill="#ffffff">✓ Simple Mode</text>
+      </g>
+      <g transform="translate(254,306)">
+        <rect width="168" height="44" rx="22" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.18"/>
+        <text x="84" y="29" text-anchor="middle" fill="#ffffff">▮ Usage Tally</text>
+      </g>
+      <g transform="translate(436,306)">
+        <rect width="196" height="44" rx="22" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.18"/>
+        <text x="98" y="29" text-anchor="middle" fill="#ffffff">● Context Handoff</text>
+      </g>
+      <g transform="translate(646,306)">
+        <rect width="168" height="44" rx="22" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.18"/>
+        <text x="84" y="29" text-anchor="middle" fill="#ffffff">✉ Inbox Alerts</text>
+      </g>
+      <g transform="translate(828,306)">
+        <rect width="232" height="44" rx="22" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.18"/>
+        <text x="116" y="29" text-anchor="middle" fill="#ffffff">⌖ Codex Computer Use</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- a little pane sketch on the right -->
+  <g transform="translate(940,58)" font-family="ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace" font-size="15">
+    <rect width="272" height="200" rx="14" fill="#0f172a" stroke="#ffffff" stroke-opacity="0.15"/>
+    <circle cx="20" cy="20" r="5" fill="#f87171"/><circle cx="38" cy="20" r="5" fill="#fbbf24"/><circle cx="56" cy="20" r="5" fill="#4ade80"/>
+    <text x="20" y="58" fill="#61A5FA" font-weight="700">WORKING</text>
+    <text x="108" y="58" fill="#7c8aa5">3 of 4 done</text>
+    <text x="20" y="90" fill="#7c8aa5">✓ Reading the notes</text>
+    <text x="20" y="114" fill="#7c8aa5">✓ Checking the budget</text>
+    <text x="20" y="138" fill="#7c8aa5">✓ Finding the files</text>
+    <text x="20" y="162" fill="#ffffff" font-weight="700">◌ Writing the update</text>
+    <rect x="20" y="176" width="232" height="8" rx="4" fill="#ffffff" fill-opacity="0.1"/>
+    <rect x="20" y="176" width="174" height="8" rx="4" fill="#4ade80"/>
+  </g>
+</svg>

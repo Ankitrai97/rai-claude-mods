@@ -1,0 +1,14 @@
+{
+  "name": "usage-tally",
+  "version": "0.1.0",
+  "description": "Your Claude plan usage inside Claude Code: session (5h) and weekly limits with reset countdowns in the status line, a /tally pane with bars, and warnings at 75% and 90%.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Rapple AI",
+    "url": "https://rappleai.com"
+  },
+  "displayName": "Usage Tally",
+  "license": "MIT",
+  "homepage": "https://github.com/Ankitrai97/rai-claude-mods/tree/main/plugins/usage-tally",
+  "repository": "https://github.com/Ankitrai97/rai-claude-mods"
+}
