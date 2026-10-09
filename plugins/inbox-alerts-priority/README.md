@@ -8,10 +8,10 @@ Gmail, Slack and Google Calendar inside Claude Code. Pop-up alerts only for mess
 - `/alerts triage` asks Claude to rank your unread messages and draft replies (it never sends anything)
 - `/alerts clear` clears the list
 
-Checks Gmail every 30 minutes, Slack every 5 minutes, Calendar every hour.
+Checks Gmail every 30 minutes, Slack every 5 minutes, Calendar every hour. Gmail means unread inbox mail from the last 2 days, minus the Promotions, Social, Updates and Forums tabs; Slack means DMs and @-mentions of you.
 
 ## Choosing what pops up
-Edit the two plain text files in this folder, one entry per line:
+Edit the two plain text files in `~/.claude/inbox-alerts-priority/` (on Windows `C:\Users\<you>\.claude\inbox-alerts-priority\`), one entry per line. The first check copies them there from this folder:
 - `priority-words.txt`: words that make a message priority (subject or text)
 - `clients.txt`: client email addresses, domains (acme.com) or Slack names
 
