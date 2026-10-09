@@ -17,6 +17,15 @@ Edit the two plain text files in this folder, one entry per line:
 
 Changes apply on the next check. Lines starting with # are ignored.
 
+## In Auto permission mode
+Auto mode's safety check refuses a mod calling a connector by itself, so `/alerts status` says "refused: … auto mode classifier gave no verdict". Allow the three read-only tools the mod uses (none of them can send or change anything): in `~/.claude/settings.json`, under `permissions.allow`, add the names `/alerts status` shows, in this form:
+
+```json
+"mcp__<gmail server>__search_threads",
+"mcp__<slack server>__slack_search_public_and_private",
+"mcp__<calendar server>__list_events"
+```
+
 ## Needs
 Claude Code 2.1.287 or newer, signed in with a claude.ai account that has the Gmail, Slack and Google Calendar connectors connected. Your email and Slack member ID are in `/config`.
 

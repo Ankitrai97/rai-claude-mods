@@ -198,13 +198,15 @@ test('in the desktop app, connectors registered under an id are found by their t
       { name: 'Read', description: 'Reads a file', mcp: false },
       { name: `mcp__${GMAIL}__search_threads`, description: 'Search Gmail', mcp: true },
       { name: `mcp__${SLACK}__slack_search_public_and_private`, description: 'Search Slack', mcp: true },
-      { name: `mcp__${CALENDAR}__list_events`, description: 'List events', mcp: true },
+      { name: 'mcp__ccd_session_mgmt__list_events', description: "Lists this session's events", mcp: true },
+      { name: `mcp__${CALENDAR}__list_events`, description: 'Returns events on the given calendar', mcp: true },
     ],
   }))
   const servers: string[] = []
   on('mcp.call', async (_$, e) => {
     servers.push(e.server)
     if (e.server.startsWith('claude.ai')) throw new Error(`no MCP server named ${e.server}`)
+    if (e.server === 'ccd_session_mgmt') return { value: { content: [{ type: 'text', text: 'Invalid arguments for tool list_events' }], isError: true } }
     const text = e.server === GMAIL ? gmail(thread('t1', 'Joe <joe@x.com>', 'quote please', '')) : e.server === CALENDAR ? CAL : slack('hi')
     return { value: { content: [{ type: 'text', text }], isError: false } }
   })

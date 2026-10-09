@@ -8,7 +8,7 @@ import { age, mergeAlerts, parseCalendar, parseGmail, parseSlack, until } from '
 import { isPriority, parseList, type Lists } from './priority'
 
 const PANE = 'inbox-alerts-priority'
-const VERSION = '0.1.3'
+const VERSION = '0.1.4'
 const MINUTE = 60 * 1000
 // How often each source is checked.
 const EVERY: Record<Source, number> = { gmail: 30 * MINUTE, slack: 5 * MINUTE, calendar: 60 * MINUTE }
@@ -32,6 +32,8 @@ const BLUE = '#61A5FA'
 const PAPER = '#E8E2D6'
 const INK = '#0B1121'
 
+type McpResult = Awaited<ReturnType<EngineInterface['mcp']['call']>>
+
 const textOf = (result: { content: { type: string; text?: string }[] }) =>
   result.content.map(block => (block.type === 'text' ? (block.text ?? '') : '')).join('\n')
 
@@ -40,10 +42,11 @@ const textOf = (result: { content: { type: string; text?: string }[] }) =>
  * "claude.ai Gmail"; the desktop app registers them under an id (mcp__df313f49-…__search_threads),
  * so the server is also found by the tool it offers.
  */
-const CONNECTORS: Record<Source, { names: string[]; tool: string }> = {
-  gmail: { names: ['claude.ai Gmail'], tool: 'search_threads' },
-  slack: { names: ['claude.ai Slack'], tool: 'slack_search_public_and_private' },
-  calendar: { names: ['claude.ai Google Calendar'], tool: 'list_events' },
+const CONNECTORS: Record<Source, { names: string[]; tool: string; about: RegExp }> = {
+  gmail: { names: ['claude.ai Gmail'], tool: 'search_threads', about: /gmail|email/i },
+  slack: { names: ['claude.ai Slack'], tool: 'slack_search_public_and_private', about: /slack/i },
+  // Other servers have a list_events too (the desktop app's own session tools): the description tells them apart.
+  calendar: { names: ['claude.ai Google Calendar'], tool: 'list_events', about: /calendar/i },
 }
 const resolved: Partial<Record<Source, string>> = {}
 const tries: Partial<Record<Source, string[]>> = {}
@@ -67,7 +70,7 @@ const noteTool = (name: string, description: string, provider: string) => {
   if (!m) return false
   let isNew = false
   for (const source of Object.keys(CONNECTORS) as Source[]) {
-    if (CONNECTORS[source].tool !== m[2]) continue
+    if (CONNECTORS[source].tool !== m[2] || !CONNECTORS[source].about.test(description)) continue
     const server = provider.startsWith('mcp:') ? provider.slice(4) : m[1]!
     if (!seenServers[source].has(server)) isNew = true
     seenServers[source].add(server)
@@ -78,12 +81,12 @@ const noteTool = (name: string, description: string, provider: string) => {
 }
 
 const candidates = async ($: EngineInterface, source: Source) => {
-  const { names, tool } = CONNECTORS[source]
+  const { names, tool, about } = CONNECTORS[source]
   const found: string[] = [...seenServers[source]]
   try {
     for (const t of await $.tool.list()) {
       const m = /^mcp__(.+?)__(.+)$/.exec(t.name)
-      if (!m || m[2] !== tool) continue
+      if (!m || m[2] !== tool || !about.test(t.description)) continue
       found.push(m[1]!)
       // Slack's search tool names the signed-in member: "Current logged in user's user_id is U08…".
       const id = /user_id is (U[A-Z0-9]+)/.exec(t.description)?.[1]
@@ -101,18 +104,25 @@ const callConnector = async ($: EngineInterface, source: Source, tool: string, a
   let reason = 'no connected server offers it'
   const tried = await candidates($, source)
   tries[source] = tried
+  let failed: McpResult | null = null
   for (const server of tried) {
     try {
       const result = await $.mcp.call(server, tool, args)
+      if (result.isError) {
+        // An error answer may just be the wrong server: try the rest before settling on it.
+        lastError[source] = `${server} answered with an error: ${textOf(result).slice(0, 160) || 'no detail'}`
+        failed = result
+        continue
+      }
       resolved[source] = server
-      if (result.isError) lastError[source] = `${server} answered with an error: ${textOf(result).slice(0, 160) || 'no detail'}`
-      else delete lastError[source]
+      delete lastError[source]
       return result
     } catch (err) {
       reason = `${server}: ${String(err instanceof Error ? err.message : err).slice(0, 160)}`
     }
   }
   delete resolved[source]
+  if (failed) return failed
   lastError[source] = reason
   throw new Error(reason)
 }
