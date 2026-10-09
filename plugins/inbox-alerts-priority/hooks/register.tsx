@@ -13,7 +13,6 @@ const MINUTE = 60 * 1000
 const EVERY: Record<Source, number> = { gmail: 30 * MINUTE, slack: 5 * MINUTE, calendar: 60 * MINUTE }
 const GMAIL_QUERY = 'in:inbox is:unread category:primary newer_than:2d'
 const SLACK_LOOKBACK_S = 2 * 24 * 60 * 60
-const CAL_AHEAD_MS = 7 * 24 * 60 * MINUTE
 const REMIND_MIN = 10
 // How many items each section of the pane shows.
 const SHOW = { gmail: 5, slack: 5, calendar: 3 }
@@ -35,6 +34,62 @@ const INK = '#0B1121'
 const textOf = (result: { content: { type: string; text?: string }[] }) =>
   result.content.map(block => (block.type === 'text' ? (block.text ?? '') : '')).join('\n')
 
+/**
+ * Which connected MCP server answers for each source. The terminal names claude.ai connectors
+ * "claude.ai Gmail"; the desktop app registers them under an id (mcp__df313f49-…__search_threads),
+ * so the server is also found by the tool it offers.
+ */
+const CONNECTORS: Record<Source, { names: string[]; tool: string }> = {
+  gmail: { names: ['claude.ai Gmail'], tool: 'search_threads' },
+  slack: { names: ['claude.ai Slack'], tool: 'slack_search_public_and_private' },
+  calendar: { names: ['claude.ai Google Calendar'], tool: 'list_events' },
+}
+const resolved: Partial<Record<Source, string>> = {}
+const lastError: Partial<Record<Source, string>> = {}
+/** Read from the connectors themselves: the Slack account and the Google account actually connected. */
+const DETECTED = { slackId: '', email: '' }
+
+/** The Slack member ID to search for: the connected account's, else the setting. */
+const slackMe = () => DETECTED.slackId || ME.slackId
+
+const candidates = async ($: EngineInterface, source: Source) => {
+  const { names, tool } = CONNECTORS[source]
+  const found: string[] = []
+  try {
+    for (const t of await $.tool.list()) {
+      const m = /^mcp__(.+?)__(.+)$/.exec(t.name)
+      if (!m || m[2] !== tool) continue
+      found.push(m[1]!)
+      // Slack's search tool names the signed-in member: "Current logged in user's user_id is U08…".
+      const id = /user_id is (U[A-Z0-9]+)/.exec(t.description)?.[1]
+      if (source === 'slack' && id) DETECTED.slackId = id
+    }
+  } catch {
+    // No tool list: the names below are still tried.
+  }
+  const first = resolved[source]
+  return [...new Set([...(first ? [first] : []), ...names, ...found])]
+}
+
+/** Calls `tool` on the first server that answers for `source`, and remembers which one did. */
+const callConnector = async ($: EngineInterface, source: Source, tool: string, args: Record<string, unknown>) => {
+  let reason = 'no connected server offers it'
+  for (const server of await candidates($, source)) {
+    try {
+      const result = await $.mcp.call(server, tool, args)
+      resolved[source] = server
+      if (result.isError) lastError[source] = `${server} answered with an error: ${textOf(result).slice(0, 160) || 'no detail'}`
+      else delete lastError[source]
+      return result
+    } catch (err) {
+      reason = `${server}: ${String(err instanceof Error ? err.message : err).slice(0, 160)}`
+    }
+  }
+  delete resolved[source]
+  lastError[source] = reason
+  throw new Error(reason)
+}
+
 /** Read clients.txt and priority-words.txt fresh on every check, so edits apply without a reinstall. */
 const loadLists = async ($: EngineInterface): Promise<Lists> => {
   const file = async (name: string) => {
@@ -49,47 +104,58 @@ const loadLists = async ($: EngineInterface): Promise<Lists> => {
 }
 
 const fetchGmail = async ($: EngineInterface) => {
-  const result = await $.mcp.call('claude.ai Gmail', 'search_threads', {
+  const result = await callConnector($, 'gmail', 'search_threads', {
     query: GMAIL_QUERY,
     pageSize: 15,
   })
   if (result.isError) throw new Error('gmail')
-  return parseGmail(textOf(result), ME.emails)
+  return parseGmail(textOf(result), DETECTED.email ? [...ME.emails, DETECTED.email] : ME.emails)
 }
 
 const fetchSlack = async ($: EngineInterface) => {
   const now = await $.clock.now()
   const since = String(Math.floor(now / 1000) - SLACK_LOOKBACK_S)
+  // Slack's search takes keywords and filters (no free query, no "-from:"), so your own
+  // messages, bots and empty rows are dropped after the search instead.
   const search = (args: Record<string, unknown>) =>
-    $.mcp.call('claude.ai Slack', 'slack_search_public_and_private', {
+    callConnector($, 'slack', 'slack_search_public_and_private', {
       after: since,
       limit: 15,
       sort: 'timestamp',
       include_context: false,
+      natural_language_query: '',
       ...args,
     })
-  const me = ME.slackId
+  await candidates($, 'slack')
+  const me = slackMe()
   const [mentions, dms] = await Promise.all([
-    me ? search({ query: `<@${me}> -from:<@${me}>` }) : Promise.resolve({ isError: true } as const),
-    search({ query: me ? `-from:<@${me}>` : '', channel_types: 'im,mpim' }),
+    me ? search({ keywords: [`<@${me}>`] }) : Promise.resolve({ isError: true } as const),
+    search({ filters: 'is:dm', channel_types: 'im,mpim' }),
   ])
   if (mentions.isError && dms.isError) throw new Error('slack')
   return mergeAlerts(
-    mentions.isError ? [] : parseSlack(textOf(mentions)),
-    dms.isError ? [] : parseSlack(textOf(dms)),
+    mentions.isError ? [] : parseSlack(textOf(mentions), me),
+    dms.isError ? [] : parseSlack(textOf(dms), me),
   )
 }
 
 const fetchCalendar = async ($: EngineInterface) => {
-  const now = await $.clock.now()
-  const result = await $.mcp.call('claude.ai Google Calendar', 'list_events', {
-    startTime: new Date(now - 15 * MINUTE).toISOString(),
-    endTime: new Date(now + CAL_AHEAD_MS).toISOString(),
+  // No startTime/endTime: the connector wants local times without a UTC offset, and its
+  // default window is exactly the one wanted, from now to 7 days ahead.
+  const result = await callConnector($, 'calendar', 'list_events', {
     orderBy: 'startTime',
     pageSize: 15,
   })
   if (result.isError) throw new Error('calendar')
-  return parseCalendar(textOf(result))
+  const text = textOf(result)
+  // The primary calendar is named after the Google account, so its own sent mail is never an alert.
+  try {
+    const summary = (JSON.parse(text) as { summary?: unknown }).summary
+    if (typeof summary === 'string' && /^[^@\s]+@[^@\s]+$/.test(summary)) DETECTED.email = summary.toLowerCase()
+  } catch {
+    // Not JSON: nothing to learn.
+  }
+  return parseCalendar(text)
 }
 
 const strings = async ($: EngineInterface, key: string) => {
@@ -274,7 +340,7 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'alerts',
-      description: 'Inbox alerts: /alerts to open, /alerts check|clear|triage',
+      description: 'Inbox alerts: /alerts to open, /alerts check|status|clear|triage',
     })
     void checkAll($).catch(() => undefined)
     $.clock.every(EVERY.gmail, () => void checkMessages($, 'gmail').catch(() => undefined))
@@ -297,6 +363,29 @@ export const register: Register = (on, options) => {
       return { text: 'Alerts cleared.' }
     }
     if (arg === 'triage') return { text: await triage($) }
+    if (arg === 'status') {
+      await checkAll($)
+      const status = await read($, poll)
+      const list = await read($, alerts)
+      const cal = await read($, events)
+      const row = (source: Source, label: string, count: string) => {
+        const ok = !status.failed.includes(source) && status.last[source] !== null
+        const via = resolved[source] ? ` via ${resolved[source]}` : ''
+        return ok
+          ? `- ${label}: working${via}. ${count}`
+          : `- ${label}: not working. ${lastError[source] ?? 'not checked yet'}`
+      }
+      return {
+        text: [
+          'Inbox Alerts status',
+          row('gmail', 'Gmail', `${list.filter(a => a.source === 'gmail').length} unread in the pane.`),
+          row('slack', 'Slack', `${list.filter(a => a.source === 'slack').length} messages in the pane.`),
+          row('calendar', 'Calendar', `${cal.length} events in the next 7 days.`),
+          `- Your email: ${[...ME.emails, ...(DETECTED.email && !ME.emails.includes(DETECTED.email) ? [`${DETECTED.email} (from your connected calendar)`] : [])].join(', ') || 'not set (your own sent mail may show up)'}`,
+          `- Your Slack member ID: ${DETECTED.slackId ? `${DETECTED.slackId} (from your connected Slack)${ME.slackId && ME.slackId !== DETECTED.slackId ? `; the setting ${ME.slackId} is a different account and is not used` : ''}` : ME.slackId || 'not set (mentions of you cannot be found; DMs still are)'}`,
+        ].join('\n'),
+      }
+    }
     await $.ui.open({ id: PANE, title: 'Inbox', focus: true })
     return { text: 'Inbox pane opened.' }
   })

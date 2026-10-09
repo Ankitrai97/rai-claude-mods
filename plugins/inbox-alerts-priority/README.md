@@ -4,6 +4,7 @@ Gmail, Slack and Google Calendar inside Claude Code. Pop-up alerts only for mess
 
 - `/alerts` opens the pane: Email, Slack and Calendar (next 3 events)
 - `/alerts check` checks everything now
+- `/alerts status` says whether Gmail, Slack and Calendar each work, through which connector, and why not
 - `/alerts triage` asks Claude to rank your unread messages and draft replies (it never sends anything)
 - `/alerts clear` clears the list
 

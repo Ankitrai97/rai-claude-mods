@@ -27,3 +27,9 @@ https://github.com/OneWave-AI/claude-code-mods/tree/main/inbox-alerts
 - Gmail and Slack checks running at the same moment no longer overwrite each other's results.
 - `/alerts triage` sends its prompt a moment after the command finishes. This build of Claude Code refuses a prompt sent from inside a command while it is still running.
 - Your email and Slack member ID are settings you fill in (`/config`); they ship empty.
+## 0.1.1: works in the desktop app, and with today's Slack and Calendar connectors
+- Connectors are found by the tool they offer, not only by name. The terminal calls them "claude.ai Gmail"; the desktop app registers them under an id, so the old names found nothing there and every check failed silently.
+- Slack's search now takes keywords and filters, not a free query: mentions search for `<@your ID>`, DMs use `is:dm`. Your own messages, bot posts and empty rows are dropped after the search, since `-from:` is no longer supported.
+- Your Slack member ID is read from the connected Slack account, so a wrong or old setting can't break mentions.
+- Calendar is asked for its default window (now to 7 days ahead) instead of UTC times, which the connector refuses. Your Google account's address is read from the calendar, so your own sent mail never alerts you.
+- New `/alerts status`: checks everything and says, per source, whether it works, through which connector, and why not.

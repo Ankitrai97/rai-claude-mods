@@ -1,6 +1,6 @@
 {
   "name": "inbox-alerts-priority",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Gmail, Slack and Calendar inside Claude Code, with pop-up alerts only for priority messages",
   "types": "./types/index.d.ts",
   "userConfig": {

@@ -183,3 +183,91 @@ test('/alerts triage fences message text so an email cannot inject instructions'
   expect(text.match(/<\/untrusted-alerts>/g)?.length).toBe(1)
   expect(text.indexOf('rm -rf')).toBeGreaterThan(text.indexOf('<untrusted-alerts>'))
 })
+
+test('in the desktop app, connectors registered under an id are found by their tools', OPTIONS, async ($, on) => {
+  mock.store(on, { 'seen:gmail': [], 'seen:slack': [] })
+  mock.clock(on, { now: NOW })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('fs.read', () => ({ value: 'quote\n' }))
+  const GMAIL = 'df313f49-6163-4390-9b10-a8850a781575'
+  const SLACK = '0c038015-6c0c-47f9-a92e-21addbc1fb3f'
+  const CALENDAR = '44f50dc2-50d0-4bee-86ef-47893b9e93a1'
+  on('tool.list', () => ({
+    value: [
+      { name: 'Read', description: 'Reads a file', mcp: false },
+      { name: `mcp__${GMAIL}__search_threads`, description: 'Search Gmail', mcp: true },
+      { name: `mcp__${SLACK}__slack_search_public_and_private`, description: 'Search Slack', mcp: true },
+      { name: `mcp__${CALENDAR}__list_events`, description: 'List events', mcp: true },
+    ],
+  }))
+  const servers: string[] = []
+  on('mcp.call', async (_$, e) => {
+    servers.push(e.server)
+    if (e.server.startsWith('claude.ai')) throw new Error(`no MCP server named ${e.server}`)
+    const text = e.server === GMAIL ? gmail(thread('t1', 'Joe <joe@x.com>', 'quote please', '')) : e.server === CALENDAR ? CAL : slack('hi')
+    return { value: { content: [{ type: 'text', text }], isError: false } }
+  })
+  const status = await $.command.run({ command: 'alerts', args: 'status' } as never)
+  expect(status.text).toContain(`Gmail: working via ${GMAIL}`)
+  expect(status.text).toContain(`Slack: working via ${SLACK}`)
+  expect(status.text).toContain(`Calendar: working via ${CALENDAR}`)
+  // Once found, the id is used straight away on the next check.
+  servers.length = 0
+  await $.command.run(CHECK)
+  expect(servers.every(s => !s.startsWith('claude.ai'))).toBe(true)
+})
+
+test('/alerts status says why a source is not working', OPTIONS, async ($, on) => {
+  mock.store(on, { 'seen:gmail': [], 'seen:slack': [] })
+  mock.clock(on, { now: NOW })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('fs.read', () => ({ value: '' }))
+  on('tool.list', () => ({ value: [] }))
+  on('mcp.call', async (_$, e) => {
+    if (e.server.includes('Slack')) throw new Error('no MCP server named claude.ai Slack')
+    const text = e.server.includes('Gmail') ? gmail() : CAL
+    return { value: { content: [{ type: 'text', text }], isError: false } }
+  })
+  const status = await $.command.run({ command: 'alerts', args: 'status' } as never)
+  expect(status.text).toContain('Gmail: working via claude.ai Gmail')
+  expect(status.text).toMatch(/Slack: not working\. claude\.ai Slack: /)
+  expect(status.text).toMatch(/Your email: \S+@/)
+})
+
+test('Slack is searched the new way, and your own, bot and empty messages are dropped', OPTIONS, async ($, on) => {
+  mock.store(on, { 'seen:gmail': [], 'seen:slack': [] })
+  mock.clock(on, { now: NOW })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('fs.read', () => ({ value: '' }))
+  const SLACK = '0c038015-6c0c-47f9-a92e-21addbc1fb3f'
+  on('tool.list', () => ({
+    value: [{ name: `mcp__${SLACK}__slack_search_public_and_private`, description: "Searches Slack. Current logged in user's user_id is U0MINE1.", mcp: true }],
+  }))
+  const block = (n: number, from: string, text: string) =>
+    [`### Result ${n} of 3`, 'Channel: DM (ID: D1)', `From: ${from}`, `Message_ts: 179133840${n}.000100`, 'Permalink: [link](https://x.slack.com/archives/D1/p1)', 'Text: ', text, '', '---', ''].join('\n')
+  const results = JSON.stringify({
+    results: ['# Search Results\n\n## Messages (3 results)', block(1, 'Me <me@x.com> (ID: U0MINE1) ', 'my own note'), block(2, ' (ID: U00)  [BOT]', ''), block(3, 'Sam <sam@x.com> (ID: U0SAM) ', 'can you send the invoice?')].join('\n'),
+  })
+  const calls: Record<string, unknown>[] = []
+  const calendarArgs: Record<string, unknown>[] = []
+  on('mcp.call', async (_$, e) => {
+    if (e.tool === 'slack_search_public_and_private') calls.push(e.args ?? {})
+    if (e.tool === 'list_events') calendarArgs.push(e.args ?? {})
+    const text = e.tool === 'slack_search_public_and_private' ? results : e.tool === 'list_events' ? JSON.stringify({ summary: 'owner@example.com', events: [] }) : gmail()
+    return { value: { content: [{ type: 'text', text }], isError: false } }
+  })
+  const status = await $.command.run({ command: 'alerts', args: 'status' } as never)
+  // The member ID comes from the connected Slack account, not the stale setting.
+  expect(calls.some(a => JSON.stringify(a.keywords) === '["<@U0MINE1>"]')).toBe(true)
+  expect(calls.some(a => a.filters === 'is:dm')).toBe(true)
+  expect(calls.every(a => !('query' in a))).toBe(true)
+  // Calendar gets no UTC times (the connector refuses a trailing Z).
+  expect(calendarArgs.every(a => !('startTime' in a) && !('endTime' in a))).toBe(true)
+  expect(status.text).toContain('U0MINE1 (from your connected Slack)')
+  expect(status.text).toContain('owner@example.com (from your connected calendar)')
+  expect(status.text).toContain('Slack: working')
+  expect(status.text).toContain('1 messages in the pane')
+})

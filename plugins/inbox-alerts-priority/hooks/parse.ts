@@ -68,8 +68,8 @@ export const parseGmail = (raw: string, me: string[]): Alert[] => {
 const field = (block: string, name: string) =>
   block.match(new RegExp(`^${name}: ?(.*)$`, 'm'))?.[1]?.trim()
 
-/** Slack search (detailed format) -> one alert per message. */
-export const parseSlack = (raw: string): Alert[] => {
+/** Slack search (detailed format) -> one alert per message; your own, bots' and empty ones dropped. */
+export const parseSlack = (raw: string, me = ''): Alert[] => {
   let results = raw
   try {
     const body = JSON.parse(raw) as { results?: string }
@@ -82,9 +82,13 @@ export const parseSlack = (raw: string): Alert[] => {
     const ts = field(block, 'Message_ts')
     if (!ts) continue
     const channel = (field(block, 'Channel') ?? 'Slack').replace(/\s*\(ID: [^)]*\)\s*$/, '')
-    const from = (field(block, 'From') ?? 'someone').replace(/\s*[<(].*$/, '')
+    const fromLine = field(block, 'From') ?? ''
+    const fromId = /\(ID: ([A-Z0-9]+)\)/.exec(fromLine)?.[1] ?? ''
+    if ((me && fromId === me) || /\[BOT\]/.test(fromLine)) continue
+    const from = fromLine.replace(/\s*[<(].*$/, '').trim() || 'someone'
     const link = field(block, 'Permalink')?.match(/\((https:[^)]+)\)/)?.[1]?.replace(/\\\//g, '/')
     const text = block.split(/^Text: ?$/m)[1]?.split(/^---\s*$/m)[0] ?? ''
+    if (!text.trim()) continue
     alerts.push({
       id: `slack:${ts}`,
       source: 'slack',
