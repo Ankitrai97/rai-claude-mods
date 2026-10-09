@@ -8,11 +8,13 @@ import { age, mergeAlerts, parseCalendar, parseGmail, parseSlack, until } from '
 import { isPriority, parseList, type Lists } from './priority'
 
 const PANE = 'inbox-alerts-priority'
-const VERSION = '0.1.4'
+const VERSION = '0.1.5'
 const MINUTE = 60 * 1000
 // How often each source is checked.
 const EVERY: Record<Source, number> = { gmail: 30 * MINUTE, slack: 5 * MINUTE, calendar: 60 * MINUTE }
-const GMAIL_QUERY = 'in:inbox is:unread category:primary newer_than:2d'
+// Unread inbox mail minus Gmail's bulk tabs. Not `category:primary`: an inbox without tabs
+// (common on Google Workspace) has no Primary label, and that search finds nothing.
+const GMAIL_QUERY = 'in:inbox is:unread newer_than:2d -category:promotions -category:social -category:updates -category:forums'
 const SLACK_LOOKBACK_S = 2 * 24 * 60 * 60
 const REMIND_MIN = 10
 // How many items each section of the pane shows.
@@ -127,11 +129,36 @@ const callConnector = async ($: EngineInterface, source: Source, tool: string, a
   throw new Error(reason)
 }
 
-/** Read clients.txt and priority-words.txt fresh on every check, so edits apply without a reinstall. */
+/** <home>/.claude/inbox-alerts-priority: the person's own word lists and the check log. */
+const dataDir = async ($: EngineInterface) => {
+  try {
+    const isWindows = (await $.env.get('OS')) === 'Windows_NT'
+    const home = ((isWindows ? await $.env.get('USERPROFILE') : await $.env.get('HOME')) ?? '').replace(/\\/g, '/')
+    return home ? `${home}/.claude/inbox-alerts-priority` : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Read clients.txt and priority-words.txt fresh on every check, so edits apply without a reinstall.
+ * They live in the data folder, not the plugin's: an installed plugin runs from a copy that an
+ * update replaces. The first check seeds them there from the plugin's defaults.
+ */
 const loadLists = async ($: EngineInterface): Promise<Lists> => {
+  const dir = await dataDir($)
   const file = async (name: string) => {
+    if (dir) {
+      try {
+        return parseList(String(await $.fs.read(`${dir}/${name}`)))
+      } catch {
+        // Not there yet: seeded from the defaults below.
+      }
+    }
     try {
-      return parseList(String(await $.fs.read(`${$.plugin.root}/${name}`)))
+      const defaults = String(await $.fs.read(`${$.plugin.root}/${name}`))
+      if (dir) await $.fs.write(`${dir}/${name}`, defaults).catch(() => undefined)
+      return parseList(defaults)
     } catch {
       return []
     }
@@ -330,14 +357,13 @@ const checkCalendar = async ($: EngineInterface) => {
  */
 const writeLog = async ($: EngineInterface) => {
   try {
-    const isWindows = (await $.env.get('OS')) === 'Windows_NT'
-    const home = ((isWindows ? await $.env.get('USERPROFILE') : await $.env.get('HOME')) ?? '').replace(/\\/g, '/')
-    if (!home) return
+    const dir = await dataDir($)
+    if (!dir) return
     const at = new Date(await $.clock.now()).toISOString()
     const status = await read($, poll)
     const seen = Object.fromEntries(Object.entries(seenServers).map(([k, v]) => [k, [...v]]))
     const log = { at, version: VERSION, resolved, tried: tries, seen, lastError, failed: status.failed, last: status.last, detected: DETECTED }
-    await $.fs.write(`${home}/.claude/inbox-alerts-priority/last-check.json`, `${JSON.stringify(log, null, 2)}\n`)
+    await $.fs.write(`${dir}/last-check.json`, `${JSON.stringify(log, null, 2)}\n`)
   } catch {
     // The log is a convenience; checks go on without it.
   }

@@ -303,3 +303,39 @@ test('connectors held behind ToolSearch are learned from tool.describe, then che
   status = await $.command.run({ command: 'alerts', args: 'status' } as never)
   expect(status.text).toContain(`Gmail: working via ${GMAIL}`)
 })
+
+test('Gmail search works for inboxes without tabs, and the word lists live in the data folder', OPTIONS, async ($, on) => {
+  mock.store(on, { 'seen:gmail': [], 'seen:slack': [] })
+  mock.clock(on, { now: NOW })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('env.get', (_$, e) => ({ value: ({ OS: 'Windows_NT', USERPROFILE: 'C:\\Users\\tester' } as Record<string, string>)[e.name] }))
+  const files = new Map<string, string>()
+  const key = (p: string) => p.replace(/\\/g, '/')
+  on('fs.read', (_$, e) => {
+    const k = key(e.path)
+    if (files.has(k)) return { value: files.get(k)! }
+    if (k.endsWith('/priority-words.txt') && !k.includes('/.claude/inbox-alerts-priority/')) return { value: 'quote\n' }
+    if (k.endsWith('/clients.txt') && !k.includes('/.claude/inbox-alerts-priority/')) return { value: '' }
+    throw new Error(`ENOENT ${e.path}`)
+  })
+  on('fs.write', (_$, e) => {
+    files.set(key(e.path), e.text)
+    return { value: undefined }
+  })
+  const queries: string[] = []
+  on('mcp.call', async (_$, e) => {
+    if (e.tool === 'search_threads') queries.push(String((e.args as { query?: string }).query))
+    const text = e.tool === 'search_threads' ? gmail(thread('t1', 'Ethan <ethan@x.com>', 'Weekly report', '')) : e.tool === 'list_events' ? CAL : slack('hi')
+    return { value: { content: [{ type: 'text', text }], isError: false } }
+  })
+  await $.command.run(CHECK)
+  expect(queries[0]).not.toContain('category:primary')
+  expect(queries[0]).toContain('-category:promotions')
+  // The defaults were copied into the data folder, where the person edits them.
+  expect(files.get('C:/Users/tester/.claude/inbox-alerts-priority/priority-words.txt')).toBe('quote\n')
+  // An edit there applies on the next check.
+  files.set('C:/Users/tester/.claude/inbox-alerts-priority/clients.txt', 'ethan@x.com\n')
+  const ran = await $.command.run(CHECK)
+  expect(ran.text).toMatch(/1 priority/)
+})
