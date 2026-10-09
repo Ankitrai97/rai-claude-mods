@@ -64,7 +64,7 @@ Type `/reload-plugins` in your chat, then `/plugin`. The dim line under the tabs
 
 ### Step 4 · Set up the two that need it
 
-- **Inbox Alerts:** type `/config`, fill in your email and your Slack member ID (Slack → your profile → ⋯ → Copy member ID).
+- **Inbox Alerts:** type `/alerts status`. Gmail, Slack and Calendar should each say "working" (your Slack ID and Google address are read from the connectors). In Auto permission mode, allow the three read-only tools it names, as its README shows. Your client list and priority words are in `~/.claude/inbox-alerts-priority/`.
 - **Codex Computer Use:** type `/codex-cu status`. The first time Claude wants an app, a pane asks you to allow it.
 
 ### Step 5 · Try each one

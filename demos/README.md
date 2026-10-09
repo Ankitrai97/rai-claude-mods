@@ -42,6 +42,7 @@ Want a fresh messy copy? `pip install openpyxl`, then `python demos/make-messy-l
 
 ## 5. Inbox Alerts (needs your Gmail, Slack and Calendar connectors)
 
-1. Fill in your email and Slack member ID: type `/config` and find the **inbox-alerts-priority** rows.
-2. Put a client's domain in `clients.txt` in the mod's folder. Its two word lists are plain files, so this mod is easiest from a clone of this repo added as a local marketplace (see the main README).
-3. Type `/alerts`. Priority messages sit at the top with a PRIORITY badge; only they pop up.
+1. Type `/alerts status`. Each of Gmail, Slack and Calendar should say "working". Your Slack ID and Google address are read from the connectors themselves. A line saying "refused: … auto mode classifier" means you're in Auto mode: allow the three read-only tools it names (see the mod's README).
+2. Put a client's address or domain in `~/.claude/inbox-alerts-priority/clients.txt` (on Windows `C:\Users\<you>\.claude\inbox-alerts-priority\clients.txt`). The file appears after the first check, next to `priority-words.txt`. Edits apply on the next check.
+3. From another account, email the address your Gmail connector is signed in to, with "quote" in the subject. Then type `/alerts check`: it pops up as Priority. Mail from your own addresses is ignored.
+4. Type `/alerts` for the pane, and `/alerts triage` to have Claude rank what's unread and draft replies (it never sends anything).
