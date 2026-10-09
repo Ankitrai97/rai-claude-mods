@@ -33,3 +33,4 @@ https://github.com/OneWave-AI/claude-code-mods/tree/main/inbox-alerts
 - Your Slack member ID is read from the connected Slack account, so a wrong or old setting can't break mentions.
 - Calendar is asked for its default window (now to 7 days ahead) instead of UTC times, which the connector refuses. Your Google account's address is read from the calendar, so your own sent mail never alerts you.
 - New `/alerts status`: checks everything and says, per source, whether it works, through which connector, and why not.
+- 0.1.3: in the desktop app, connector tools wait behind ToolSearch and are missing from the mod's tool list, so the mod also learns each connector's server from `tool.describe` (which carries `mcp:<server>`) and re-checks as soon as it finds one. Each full check is written to `~/.claude/inbox-alerts-priority/last-check.json`: what was tried and why it failed.

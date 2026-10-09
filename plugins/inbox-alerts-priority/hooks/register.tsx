@@ -8,6 +8,7 @@ import { age, mergeAlerts, parseCalendar, parseGmail, parseSlack, until } from '
 import { isPriority, parseList, type Lists } from './priority'
 
 const PANE = 'inbox-alerts-priority'
+const VERSION = '0.1.3'
 const MINUTE = 60 * 1000
 // How often each source is checked.
 const EVERY: Record<Source, number> = { gmail: 30 * MINUTE, slack: 5 * MINUTE, calendar: 60 * MINUTE }
@@ -45,6 +46,7 @@ const CONNECTORS: Record<Source, { names: string[]; tool: string }> = {
   calendar: { names: ['claude.ai Google Calendar'], tool: 'list_events' },
 }
 const resolved: Partial<Record<Source, string>> = {}
+const tries: Partial<Record<Source, string[]>> = {}
 const lastError: Partial<Record<Source, string>> = {}
 /** Read from the connectors themselves: the Slack account and the Google account actually connected. */
 const DETECTED = { slackId: '', email: '' }
@@ -52,9 +54,32 @@ const DETECTED = { slackId: '', email: '' }
 /** The Slack member ID to search for: the connected account's, else the setting. */
 const slackMe = () => DETECTED.slackId || ME.slackId
 
+/**
+ * Servers seen offering each source's tool. The desktop app keeps connector tools behind
+ * ToolSearch, so `$.tool.list()` can miss them; `tool.describe` still fires for every tool
+ * the engine offers the model, deferred or not, with the server in `provider.plugin` ("mcp:<server>").
+ */
+const seenServers: Record<Source, Set<string>> = { gmail: new Set(), slack: new Set(), calendar: new Set() }
+
+/** Records the server behind one described tool; true when it was new for its source. */
+const noteTool = (name: string, description: string, provider: string) => {
+  const m = /^mcp__(.+?)__(.+)$/.exec(name)
+  if (!m) return false
+  let isNew = false
+  for (const source of Object.keys(CONNECTORS) as Source[]) {
+    if (CONNECTORS[source].tool !== m[2]) continue
+    const server = provider.startsWith('mcp:') ? provider.slice(4) : m[1]!
+    if (!seenServers[source].has(server)) isNew = true
+    seenServers[source].add(server)
+    const id = /user_id is (U[A-Z0-9]+)/.exec(description)?.[1]
+    if (source === 'slack' && id) DETECTED.slackId = id
+  }
+  return isNew
+}
+
 const candidates = async ($: EngineInterface, source: Source) => {
   const { names, tool } = CONNECTORS[source]
-  const found: string[] = []
+  const found: string[] = [...seenServers[source]]
   try {
     for (const t of await $.tool.list()) {
       const m = /^mcp__(.+?)__(.+)$/.exec(t.name)
@@ -74,7 +99,9 @@ const candidates = async ($: EngineInterface, source: Source) => {
 /** Calls `tool` on the first server that answers for `source`, and remembers which one did. */
 const callConnector = async ($: EngineInterface, source: Source, tool: string, args: Record<string, unknown>) => {
   let reason = 'no connected server offers it'
-  for (const server of await candidates($, source)) {
+  const tried = await candidates($, source)
+  tries[source] = tried
+  for (const server of tried) {
     try {
       const result = await $.mcp.call(server, tool, args)
       resolved[source] = server
@@ -287,8 +314,29 @@ const checkCalendar = async ($: EngineInterface) => {
   await remind($)
 }
 
-const checkAll = ($: EngineInterface) =>
-  Promise.all([checkMessages($, 'gmail'), checkMessages($, 'slack'), checkCalendar($)])
+/**
+ * After each full check, what was tried and why it failed goes to
+ * <home>/.claude/inbox-alerts-priority/last-check.json, so a failure can be read without the chat.
+ */
+const writeLog = async ($: EngineInterface) => {
+  try {
+    const isWindows = (await $.env.get('OS')) === 'Windows_NT'
+    const home = ((isWindows ? await $.env.get('USERPROFILE') : await $.env.get('HOME')) ?? '').replace(/\\/g, '/')
+    if (!home) return
+    const at = new Date(await $.clock.now()).toISOString()
+    const status = await read($, poll)
+    const seen = Object.fromEntries(Object.entries(seenServers).map(([k, v]) => [k, [...v]]))
+    const log = { at, version: VERSION, resolved, tried: tries, seen, lastError, failed: status.failed, last: status.last, detected: DETECTED }
+    await $.fs.write(`${home}/.claude/inbox-alerts-priority/last-check.json`, `${JSON.stringify(log, null, 2)}\n`)
+  } catch {
+    // The log is a convenience; checks go on without it.
+  }
+}
+
+const checkAll = async ($: EngineInterface) => {
+  await Promise.all([checkMessages($, 'gmail'), checkMessages($, 'slack'), checkCalendar($)])
+  await writeLog($)
+}
 
 const dismiss = async ($: EngineInterface, ids: string[]) => {
   const dismissed = (await strings($, 'dismissed')) ?? []
@@ -336,6 +384,19 @@ export const register: Register = (on, options) => {
     .map(s => s.trim().toLowerCase())
     .filter(Boolean)
   ME.slackId = String(options.slackUserId ?? '').trim()
+
+  // Learn each connector's server as the engine describes the tools it offers. When a source that
+  // failed gets a server, check again straight away instead of waiting for its next timer.
+  let recheck: { cancel: () => void } | null = null
+  on('tool.describe', async ($, e, next) => {
+    if (noteTool(e.tool, e.description, e.provider.plugin) && (await read($, poll)).failed.length && !recheck) {
+      recheck = $.clock.after(1500, () => {
+        recheck = null
+        void checkAll($).catch(() => undefined)
+      })
+    }
+    return next(e)
+  }).catch(($, e, next) => next(e))
 
   on('session.start', async ($, e, next) => {
     await $.command.register({

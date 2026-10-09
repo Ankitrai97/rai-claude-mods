@@ -271,3 +271,33 @@ test('Slack is searched the new way, and your own, bot and empty messages are dr
   expect(status.text).toContain('Slack: working')
   expect(status.text).toContain('1 messages in the pane')
 })
+
+test('connectors held behind ToolSearch are learned from tool.describe, then checked', OPTIONS, async ($, on) => {
+  mock.store(on, { 'seen:gmail': [], 'seen:slack': [] })
+  const clock = mock.clock(on, { now: NOW })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('fs.read', () => ({ value: '' }))
+  on('fs.write', () => ({ value: undefined }))
+  on('env.get', () => ({ value: undefined }))
+  on('tool.list', () => ({ value: [] }))
+  const GMAIL = 'df313f49-6163-4390-9b10-a8850a781575'
+  on('mcp.call', async (_$, e) => {
+    if (e.server !== GMAIL) throw new Error(`no connected MCP tool on a server named ${e.server}`)
+    return { value: { content: [{ type: 'text', text: gmail(thread('t1', 'Joe <joe@x.com>', 'quote please', '')) }], isError: false } }
+  })
+  on('tool.describe', (_$, e) => ({ description: e.description }))
+  // Nothing found yet: Gmail fails.
+  let status = await $.command.run({ command: 'alerts', args: 'status' } as never)
+  expect(status.text).toContain('Gmail: not working')
+  // The engine describes the deferred Gmail tool; the mod learns the server and re-checks.
+  await $.tool.describe({
+    tool: `mcp__${GMAIL}__search_threads`,
+    description: 'Lists email threads',
+    isDeferred: true,
+    provider: { plugin: `mcp:${GMAIL}`, tier: 'user' },
+  } as never)
+  await clock.advance(2000)
+  status = await $.command.run({ command: 'alerts', args: 'status' } as never)
+  expect(status.text).toContain(`Gmail: working via ${GMAIL}`)
+})
