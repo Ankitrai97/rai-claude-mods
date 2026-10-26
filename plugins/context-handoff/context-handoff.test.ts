@@ -1,7 +1,7 @@
 import { test, expect } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-const DIR = 'C:/work/project'
+const DIR = '/work/project'
 const NOTE = `${DIR}/.claude/handoff.md`
 const USED = `${DIR}/.claude/handoff-used.md`
 const HOUR = 60 * 60 * 1000
@@ -18,6 +18,7 @@ const engine = (on: On, opts: { files?: Record<string, { text: string; mtimeMs: 
   const where = { cwd: DIR }
   const files = new Map(Object.entries(opts.files ?? {}))
   const submitted: string[] = []
+  const context: string[][] = []
   const runs: string[][] = []
   const toasts: string[] = []
   const key = (path: string) => path.replace(/\\/g, '/')
@@ -62,15 +63,15 @@ const engine = (on: On, opts: { files?: Record<string, { text: string; mtimeMs: 
   })
   on('prompt.submit', ($, e) => {
     submitted.push(e.text)
+    context.push([...(e.context ?? [])])
     return { text: e.text }
   })
-  on('prompt.compose', () => ({ sections: [] }) as any)
   on('command.run', ($, e) => ({ text: `engine ran /${e.command}` }))
   on('tool.call', ($, e) => ({ result: 'ok', text: 'ok', isError: false }))
-  return { usage, files, submitted, runs, toasts, where }
+  return { usage, files, submitted, context, runs, toasts, where }
 }
 
-const COMPOSE = { model: 'claude-opus-5-5', promptModel: 'claude-opus-5-5', surfaces: ['terminal'], tools: [], outputStyle: { name: 'default', isKeepingCodingInstructions: true }, traits: [] } as any
+const PROMPT = { text: 'what were we doing?', wait: false, origin: { kind: 'composer' } } as any
 const start = { cwd: DIR, surface: 'terminal' as const, isInteractive: true }
 const NOTE_TEXT = '## Goal\nShip the lead list demo.\n## What\'s done\nMod built.\n## Decisions made\nWord over TextEdit.\n## Key files\nleads.xlsx\n## Next steps\n1. Record.'
 
@@ -129,23 +130,24 @@ test('saving the note shows in the bar', async ($, on) => {
 })
 
 test('a new chat loads a recent note, renames it, and carries it to Claude', async ($, on) => {
-  const { files, runs, toasts } = engine(on, { files: { [NOTE]: { text: NOTE_TEXT, mtimeMs: STARTED - 2 * HOUR } } })
+  const { files, runs, toasts, context } = engine(on, { files: { [NOTE]: { text: NOTE_TEXT, mtimeMs: STARTED - 2 * HOUR } } })
   await $.session.start(start)
   expect(files.has(NOTE)).toBe(false)
   expect(files.get(USED)?.text).toBe(NOTE_TEXT)
   expect(runs[0].join(' ')).toContain('Move-Item')
   expect(toasts[0]).toContain('2 hours ago')
-  const composed: any = await $.prompt.compose(COMPOSE)
-  const section = composed.sections.find((s: any) => s.id === 'context-handoff:note')
-  expect(section.text).toContain('Ship the lead list demo.')
+  await $.prompt.submit(PROMPT)
+  await $.prompt.submit(PROMPT)
+  expect(context[0].join('\n')).toContain('Ship the lead list demo.')
+  expect(context[1]).toEqual([])
 })
 
 test('the next chat does not load the same note again', async ($, on) => {
   // what the first chat left: only handoff-used.md
-  engine(on, { files: { [USED]: { text: NOTE_TEXT, mtimeMs: STARTED - 2 * HOUR } } })
+  const { context } = engine(on, { files: { [USED]: { text: NOTE_TEXT, mtimeMs: STARTED - 2 * HOUR } } })
   await $.session.start(start)
-  const composed: any = await $.prompt.compose(COMPOSE)
-  expect(composed.sections.find((s: any) => s.id === 'context-handoff:note')).toBeUndefined()
+  await $.prompt.submit(PROMPT)
+  expect(context[0]).toEqual([])
 })
 
 test('a note over 24 hours old, or one saved in this same chat, is left alone', async ($, on) => {

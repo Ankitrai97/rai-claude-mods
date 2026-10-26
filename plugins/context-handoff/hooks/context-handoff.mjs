@@ -12,7 +12,9 @@
 // session.start: take a first reading. If the project has a handoff note from
 // the last 24 hours, written before this chat began, load it and rename it to
 // handoff-used.md so it loads only once.
-// prompt.compose: while a note is loaded, carry it in the system prompt.
+// prompt.submit: while a note is loaded, hand it to Claude with the first
+// prompt. sec-default skips an installed plugin's prompt.compose, so the
+// system prompt is out of reach.
 // ui.render (AbovePrompt): one line: the fill in green, amber or red, the
 // tokens used of the window, a chart of recent turns, and an H button.
 // command.run (/handoff) and the H button: ask Claude to write the note.
@@ -33,6 +35,7 @@ const AMBER = "#FFB000";
 const loaded = atom({ plugin: "context-handoff", key: "loaded" }, null);
 const askedAt = atom({ plugin: "context-handoff", key: "askedAt" }, null);
 const savedAt = atom({ plugin: "context-handoff", key: "savedAt" }, null);
+const delivered = atom({ plugin: "context-handoff", key: "delivered" }, false);
 
 // Readings: { tokens, window, percent }, oldest first.
 let readings = [];
@@ -66,17 +69,17 @@ export function register(on) {
     return result;
   });
 
-  on("prompt.compose", async ($, e, next) => {
-    const composed = await next(e);
+  on("prompt.submit", async ($, e, next) => {
     const note = await read($, loaded);
-    if (!note) {
-      return composed;
+    if (!note || e.command || (await read($, delivered))) {
+      return next(e);
     }
-    return {
-      ...composed,
-      sections: [...composed.sections, { id: "context-handoff:note", text: noteSection(note), scope: "session" }],
-    };
-  });
+    const result = await next({ ...e, context: [...(e.context ?? []), noteSection(note)] });
+    if (!result.drop) {
+      await update($, delivered, () => true);
+    }
+    return result;
+  }).catch(($, e, next) => next(e));
 
   // A command hook holds the turn, so the request goes out once it returns.
   on("command.run", { command: ["handoff", "context-handoff:handoff"] }, ($, e) => {
